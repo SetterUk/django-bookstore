@@ -1,0 +1,43 @@
+<!-- accounts/templates/accounts/login.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Login - Online Bookstore{% endblock %}
+
+{% block content %}
+    <div style="max-width: 500px; margin: 0 auto; padding: 20px;">
+        <h1>Login</h1>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                {{ form.username.label_tag }}
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div style="color: red;">{{ form.username.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                {{ form.password.label_tag }}
+                {{ form.password }}
+                {% if form.password.errors %}
+                    <div style="color: red;">{{ form.password.errors }}</div>
+                {% endif %}
+            </div>
+            
+            {% if form.non_field_errors %}
+                <div style="color: red; margin-bottom: 15px;">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        
+        <p style="margin-top: 20px;">
+            Don't have an account? <a href="{% url 'register' %}">Register here</a>.
+        </p>
+    </div>
+{% endblock %}

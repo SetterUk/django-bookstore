@@ -1,0 +1,58 @@
+<!-- store/templates/store/cart_detail.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Your Cart - Online Bookstore{% endblock %}
+
+{% block content %}
+    <h1>Your Shopping Cart</h1>
+    
+    {% if cart_items %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center;">
+                            {% if item.book.cover_image %}
+                                <img src="{{ item.book.cover_image.url }}" alt="{{ item.book.title }}" style="width: 50px; margin-right: 10px;">
+                            {% endif %}
+                            <div>
+                                <a href="{% url 'book_detail' item.book.id %}">{{ item.book.title }}</a>
+                                <p style="margin: 0; color: #666;">by {{ item.book.author }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${{ item.book.price }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ item.get_cost }}</td>
+                    <td>
+                        <a href="{% url 'cart_remove' item.id %}" class="btn btn-danger">Remove</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                    <td><strong>${{ cart.get_total_price }}</strong></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px; display: flex; justify-content: space-between;">
+            <a href="{{ previous_page }}" class="btn">Continue Shopping</a>
+            <a href="#" class="btn btn-primary">Proceed to Checkout</a>
+        </div>
+    {% else %}
+        <p>Your cart is empty.</p>
+        <a href="{% url 'book_list' %}" class="btn">Continue Shopping</a>
+    {% endif %}
+{% endblock %}

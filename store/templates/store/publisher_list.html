@@ -1,0 +1,22 @@
+<!-- store/templates/store/publisher_list.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}Publishers - Online Bookstore{% endblock %}
+
+{% block content %}
+    <h1>Publishers</h1>
+    
+    <ul style="list-style-type: none; padding: 0;">
+        {% for publisher in publishers %}
+        <li style="padding: 15px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            <h3><a href="{% url 'publisher_detail' publisher.id %}">{{ publisher.name }}</a></h3>
+            <p>{{ publisher.address }}</p>
+            {% if publisher.website %}
+                <p><a href="{{ publisher.website }}" target="_blank">Visit Website</a></p>
+            {% endif %}
+        </li>
+        {% empty %}
+        <p>No publishers available.</p>
+        {% endfor %}
+    </ul>
+{% endblock %}

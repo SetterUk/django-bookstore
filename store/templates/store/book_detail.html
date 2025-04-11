@@ -1,0 +1,52 @@
+<!-- store/templates/store/book_detail.html -->
+{% extends 'store/base.html' %}
+
+{% block title %}{{ book.title }} - Online Bookstore{% endblock %}
+
+{% block content %}
+    <div style="display: flex; margin-top: 20px;">
+        <div style="flex: 1; max-width: 300px; margin-right: 30px;">
+            {% if book.cover_image %}
+                <img src="{{ book.cover_image.url }}" alt="{{ book.title }}" style="width: 100%;">
+            {% else %}
+                <img src="/static/images/no-cover.jpg" alt="No cover available" style="width: 100%;">
+            {% endif %}
+        </div>
+        <div style="flex: 2;">
+            <h1>{{ book.title }}</h1>
+            <h3>by {{ book.author }}</h3>
+            <p><strong>Publisher:</strong> <a href="{% url 'publisher_detail' book.publisher.id %}">{{ book.publisher.name }}</a></p>
+            <p><strong>ISBN:</strong> {{ book.isbn }}</p>
+            <p><strong>Publication Date:</strong> {{ book.publication_date }}</p>
+            <p><strong>Price:</strong> ${{ book.price }}</p>
+            <p><strong>Stock:</strong> {% if book.stock > 0 %}{{ book.stock }} available{% else %}Out of stock{% endif %}</p>
+            
+            <div style="margin: 20px 0;">
+                <h3>Description</h3>
+                <p>{{ book.description }}</p>
+            </div>
+            
+            {% if book.stock > 0 %}
+                {% if user.is_authenticated %}
+                    <form action="{% url 'cart_add' book.id %}" method="post">
+                        {% csrf_token %}
+                        <div style="display: flex; align-items: center;">
+                            <label for="{{ cart_book_form.quantity.id_for_label }}" style="margin-right: 10px;">Quantity:</label>
+                            {{ cart_book_form.quantity }}
+                            {{ cart_book_form.update }}
+                            <button type="submit" class="btn btn-primary" style="margin-left: 10px;">Add to Cart</button>
+                        </div>
+                    </form>
+                {% else %}
+                    <p><a href="{% url 'login' %}">Log in</a> to add this book to your cart.</p>
+                {% endif %}
+            {% else %}
+                <p>Sorry, this book is currently out of stock.</p>
+            {% endif %}
+            
+            <div style="margin-top: 20px;">
+                <a href="{% url 'book_list' %}" class="btn">Back to Book List</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
