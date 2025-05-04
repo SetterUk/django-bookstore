@@ -8,9 +8,17 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
 import os
-
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookstore.settings')
+class ASGIApplication:
+    def __init__(self):
+        self.settings_module = 'bookstore.settings'
 
-application = get_asgi_application()
+    def setup_environment(self):
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', self.settings_module)
+
+    def get_application(self):
+        self.setup_environment()
+        return get_asgi_application()
+
+application = ASGIApplication().get_application()

@@ -8,9 +8,17 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 """
 
 import os
-
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookstore.settings')
+class WSGIApplication:
+    def __init__(self):
+        self.settings_module = 'bookstore.settings'
 
-application = get_wsgi_application()
+    def setup_environment(self):
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', self.settings_module)
+
+    def get_application(self):
+        self.setup_environment()
+        return get_wsgi_application()
+
+application = WSGIApplication().get_application()

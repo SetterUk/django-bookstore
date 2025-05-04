@@ -5,12 +5,24 @@ from django.contrib import messages
 from django.http import JsonResponse
 from .models import Book, Cart, CartItem
 from django.db.models import Q
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, FormView, View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from decimal import Decimal
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.views import LoginView, LogoutView
+from django import forms
+from django.contrib.auth.models import User
+
+class BookForm(forms.ModelForm):
+    class Meta:
+        model = Book
+        fields = ['title', 'author', 'description', 'price', 'stock', 'cover_image']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4}),
+            'price': forms.NumberInput(attrs={'step': '0.01'}),
+            'stock': forms.NumberInput(attrs={'min': '0'}),
+        }
 
 # Create your views here.
 
@@ -249,12 +261,12 @@ class BookListView(ListView):
 
     def get_queryset(self):
         queryset = Book.objects.all()
-        query = self.request.GET.get('q')
-        if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) | 
-                Q(author__icontains=query)
-            )
+        category = self.request.GET.get('category', '')
+        
+        if category:
+            # Add category filtering logic here if needed
+            pass
+        
         return queryset
 
 class BookDetailView(DetailView):
@@ -262,123 +274,169 @@ class BookDetailView(DetailView):
     template_name = 'store/book_detail.html'
     context_object_name = 'book'
 
-class BookCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
-    model = Book
-    template_name = 'store/book_form.html'
-    fields = ['title', 'author', 'description', 'price', 'stock', 'cover_image']
-    success_url = reverse_lazy('store:book_list')
-
+class BookCreateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return self.request.user.is_staff
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Book added successfully!')
-        return super().form_valid(form)
+    def get(self, request):
+        form = BookForm()
+        return render(request, 'store/book_form.html', {'form': form})
 
-class BookUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
-    model = Book
-    template_name = 'store/book_form.html'
-    fields = ['title', 'author', 'description', 'price', 'stock', 'cover_image']
-    success_url = reverse_lazy('store:book_list')
+    def post(self, request):
+        form = BookForm(request.POST, request.FILES)
+        if form.is_valid():
+            book = form.save()
+            messages.success(request, 'Book created successfully!')
+            return redirect('store:book_list')
+        return render(request, 'store/book_form.html', {'form': form})
 
+class BookUpdateView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return self.request.user.is_staff
 
-    def form_valid(self, form):
-        messages.success(self.request, 'Book updated successfully!')
-        return super().form_valid(form)
+    def get(self, request, pk):
+        book = get_object_or_404(Book, pk=pk)
+        form = BookForm(instance=book)
+        return render(request, 'store/book_form.html', {'form': form})
 
-class BookDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
-    model = Book
-    template_name = 'store/book_confirm_delete.html'
-    success_url = reverse_lazy('store:book_list')
+    def post(self, request, pk):
+        book = get_object_or_404(Book, pk=pk)
+        form = BookForm(request.POST, request.FILES, instance=book)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Book updated successfully!')
+            return redirect('store:book_list')
+        return render(request, 'store/book_form.html', {'form': form})
 
+class BookDeleteView(LoginRequiredMixin, UserPassesTestMixin, View):
     def test_func(self):
         return self.request.user.is_staff
 
-    def delete(self, request, *args, **kwargs):
+    def get(self, request, pk):
+        book = get_object_or_404(Book, pk=pk)
+        return render(request, 'store/book_confirm_delete.html', {'book': book})
+
+    def post(self, request, pk):
+        book = get_object_or_404(Book, pk=pk)
+        book.delete()
         messages.success(request, 'Book deleted successfully!')
-        return super().delete(request, *args, **kwargs)
+        return redirect('store:book_list')
 
-class CartView(LoginRequiredMixin, TemplateView):
-    template_name = 'store/cart.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        cart = self.request.session.get('cart', {})
+class CartView(LoginRequiredMixin, View):
+    def get(self, request):
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        cart_items = cart.cartitem_set.all()
         
-        # Get all books in the cart
-        books = {str(book.id): book for book in Book.objects.filter(id__in=cart.keys())}
-        
-        # Calculate totals
-        subtotal = sum(
-            Decimal(str(book.price)) * Decimal(str(quantity))
-            for book_id, quantity in cart.items()
-            if book_id in books
-        )
+        subtotal = sum(item.book.price * item.quantity for item in cart_items)
         tax = subtotal * Decimal('0.10')  # 10% tax
         total = subtotal + tax
         
-        context.update({
-            'cart_items': cart,
-            'books': books,
+        context = {
+            'cart_items': cart_items,
             'subtotal': subtotal,
             'tax': tax,
-            'total': total,
-        })
-        return context
+            'total': total
+        }
+        return render(request, 'store/cart.html', context)
 
 class AddToCartView(LoginRequiredMixin, View):
     def post(self, request, pk):
         book = get_object_or_404(Book, pk=pk)
-        cart = request.session.get('cart', {})
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, book=book)
         
-        if str(pk) in cart:
-            cart[str(pk)] += 1
-        else:
-            cart[str(pk)] = 1
+        if not created:
+            cart_item.quantity += 1
+            cart_item.save()
         
-        request.session['cart'] = cart
         messages.success(request, f'{book.title} added to cart!')
-        return redirect('store:book_detail', pk=pk)
+        return redirect('store:cart_view')
 
 class RemoveFromCartView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        cart = request.session.get('cart', {})
-        if str(pk) in cart:
-            del cart[str(pk)]
-            request.session['cart'] = cart
-            messages.success(request, 'Item removed from cart!')
+        book = get_object_or_404(Book, pk=pk)
+        cart = get_object_or_404(Cart, user=request.user)
+        cart_item = get_object_or_404(CartItem, cart=cart, book=book)
         
+        cart_item.delete()
+        messages.success(request, f'{book.title} removed from cart!')
         return redirect('store:cart_view')
 
 class UpdateCartView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        cart = request.session.get('cart', {})
+        book = get_object_or_404(Book, pk=pk)
+        cart = get_object_or_404(Cart, user=request.user)
+        cart_item = get_object_or_404(CartItem, cart=cart, book=book)
+        
         quantity = int(request.POST.get('quantity', 1))
-        
         if quantity > 0:
-            cart[str(pk)] = quantity
+            cart_item.quantity = quantity
+            cart_item.save()
+            messages.success(request, f'Cart updated!')
         else:
-            del cart[str(pk)]
+            cart_item.delete()
+            messages.success(request, f'{book.title} removed from cart!')
         
-        request.session['cart'] = cart
         return redirect('store:cart_view')
 
-class RegisterView(FormView):
+class RegisterView(View):
     template_name = 'store/register.html'
-    form_class = UserCreationForm
-    success_url = reverse_lazy('store:book_list')
 
-    def form_valid(self, form):
-        user = form.save()
-        login(self.request, user)
-        messages.success(self.request, 'Registration successful!')
-        return super().form_valid(form)
+    def get(self, request):
+        return render(request, self.template_name)
 
-class CustomLoginView(LoginView):
-    template_name = 'registration/login.html'
-    redirect_authenticated_user = True
+    def post(self, request):
+        username = request.POST.get('username')
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+        email = request.POST.get('email')
 
-class CustomLogoutView(LogoutView):
-    next_page = 'store:book_list'
+        if not username or not password1 or not password2:
+            messages.error(request, 'Please fill in all required fields.')
+            return render(request, self.template_name)
+
+        if password1 != password2:
+            messages.error(request, 'Passwords do not match.')
+            return render(request, self.template_name)
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, 'Username already exists.')
+            return render(request, self.template_name)
+
+        try:
+            user = User.objects.create_user(
+                username=username,
+                password=password1,
+                email=email
+            )
+            login(request, user)
+            messages.success(request, 'Registration successful!')
+            return redirect('store:book_list')
+        except Exception as e:
+            messages.error(request, f'Error during registration: {str(e)}')
+            return render(request, self.template_name)
+
+class CustomLoginView(View):
+    template_name = 'store/login.html'
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            messages.success(request, 'Login successful!')
+            return redirect('store:book_list')
+        else:
+            messages.error(request, 'Invalid username or password.')
+            return render(request, self.template_name)
+
+class CustomLogoutView(View):
+    def get(self, request):
+        logout(request)
+        messages.success(request, 'Logged out successfully!')
+        return redirect('store:book_list')
