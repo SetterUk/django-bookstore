@@ -1,0 +1,79 @@
+{% extends 'store/base.html' %}
+
+{% block title %}
+{% if object %}Edit {{ object.title }}{% else %}Add New Book{% endif %} - Bookstore
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">
+                    {% if object %}
+                    Edit Book: {{ object.title }}
+                    {% else %}
+                    Add New Book
+                    {% endif %}
+                </h2>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="id_title" name="title" 
+                               value="{{ object.title|default:'' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_author" class="form-label">Author</label>
+                        <input type="text" class="form-control" id="id_author" name="author" 
+                               value="{{ object.author|default:'' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="id_description" name="description" 
+                                  rows="4" required>{{ object.description|default:'' }}</textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_price" class="form-label">Price</label>
+                            <input type="number" class="form-control" id="id_price" name="price" 
+                                   value="{{ object.price|default:'' }}" step="0.01" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="id_stock" class="form-label">Stock</label>
+                            <input type="number" class="form-control" id="id_stock" name="stock" 
+                                   value="{{ object.stock|default:'0' }}" min="0" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_cover_image" class="form-label">Cover Image</label>
+                        <input type="file" class="form-control" id="id_cover_image" name="cover_image" 
+                               accept="image/*">
+                        {% if object.cover_image %}
+                        <div class="mt-2">
+                            <img src="{{ object.cover_image.url }}" alt="Current cover" 
+                                 class="img-thumbnail" style="max-height: 200px;">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'store:book_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            {% if object %}Update Book{% else %}Add Book{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
