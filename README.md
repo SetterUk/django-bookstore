@@ -95,3 +95,4 @@ The project includes a Jenkins pipeline that:
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
+![Screenshot 2025-04-11 104833](https://github.com/user-attachments/assets/fd2446d8-cab2-4e16-8a00-f4c8fa4fd805)
